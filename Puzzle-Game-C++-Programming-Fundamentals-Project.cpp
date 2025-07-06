@@ -7,6 +7,7 @@
 #include<string>
 #include<cmath>
 #include<Windows.h>
+#include <chrono>
 using namespace std;
 const int ARROW_KEY_CHARACTER = 224;
 const int ARROW_KEY_UP = 72;
@@ -30,58 +31,149 @@ int permanent1[5][5];
 int permanent2[5][5];
 char choice;
 string path;
-//inital
+int move_count = 0;
+std::chrono::time_point<std::chrono::steady_clock> start_time;
 
+void setColor(int color) {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, color);
+}
+
+void print_banner() {
+	setColor(13);
+	cout << "\n==============================\n";
+	cout << "      The Puzzle Game C++     \n";
+	cout << "==============================\n";
+	setColor(7);
+	cout << "\nBy: Muhammad Usman Awan\n";
+	cout << "GitHub  : https://github.com/Usman-Ifty\n";
+	cout << "LinkedIn: https://www.linkedin.com/in/usman-awan-a85877359/\n";
+	cout << "Instagram: @ifty.reels\n\n";
+}
+
+int manhattan_distance() {
+	int dist = 0;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			int val = permanent1[i][j];
+			if (val == 0) continue;
+			for (int x = 0; x < 5; x++) {
+				for (int y = 0; y < 5; y++) {
+					if (permanent2[x][y] == val) {
+						dist += abs(i - x) + abs(j - y);
+					}
+				}
+			}
+		}
+	}
+	return dist;
+}
+
+void print_status() {
+	setColor(11);
+	cout << "Moves: " << move_count << "  |  ";
+	auto now = std::chrono::steady_clock::now();
+	int seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+	cout << "Time: " << seconds << "s" << endl;
+	setColor(7);
+	cout << "Manhattan distance to goal: " << manhattan_distance() << endl;
+}
+
+void easy_board() {
+	// Fill permanent1 and permanent2 with a board that is 1 move away from solved
+	int val = 1;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			permanent2[i][j] = val % 25;
+			val++;
+		}
+	}
+	// Copy goal to current, then swap last two tiles to make it 1 move away
+	for (int i = 0; i < 5; i++)
+		for (int j = 0; j < 5; j++)
+			permanent1[i][j] = permanent2[i][j];
+	// Swap last two tiles (bottom right and left)
+	std::swap(permanent1[4][3], permanent1[4][4]);
+}
+
+void print_hint() {
+	// Suggest a move: find a tile not in place and suggest moving it
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			if (permanent1[i][j] != 0 && permanent1[i][j] != permanent2[i][j]) {
+				cout << "Hint: Try moving tile " << permanent1[i][j] << endl;
+				return;
+			}
+		}
+	}
+	cout << "You're almost there!" << endl;
+}
 
 int main()
 {
-	srand(time(0));
-	initial_board();
-	cout << endl << endl;
-	final_board();
-	for (int i = 0; i < 5; i++)
-	{
-		for (int j = 0; j < 5; j++)
+	int menu_choice = 0;
+	print_banner();
+	cout << "1. Easy Board (winnable in 1 move)\n2. Random Board\nChoose option: ";
+	cin >> menu_choice;
+	if (menu_choice == 1) {
+		easy_board();
+	}
+	else {
+		srand(time(0));
+		while (true)
 		{
-			permanent1[i][j] = ar1[i][j];
+			initial_board();
+			final_board();
+			for (int i = 0; i < 5; i++)
+			{
+				for (int j = 0; j < 5; j++)
+				{
+					permanent1[i][j] = ar1[i][j];
+				}
+			}
+			for (int i = 0; i < 5; i++)
+			{
+				for (int j = 0; j < 5; j++)
+				{
+					permanent2[i][j] = ar2[i][j];
+				}
+			}
+			if (is_solvable(permanent1, permanent2))
+				break;
 		}
 	}
-	for (int i = 0; i < 5; i++)
-	{
-		for (int j = 0; j < 5; j++)
-		{
-			permanent2[i][j] = ar2[i][j];
-		}
-	}
-	while (!is_solvable(permanent1, permanent2))
-	{
-		if (is_solvable(permanent1, permanent2))
-			cout << "THE GOAL IS REACHABLE\n";
-	}
+	move_count = 0;
+	start_time = std::chrono::steady_clock::now();
+	cout << "THE GOAL IS REACHABLE\n";
 
-	init();
-	cout << endl << endl;
-	finale();
-	legal_moves(permanent1);
 	while (1)
 	{
-		cout << "MAKE YOUR MOVE\n";
+		system("cls");
+		print_banner();
+		print_status();
 		init();
-		legal_moves(permanent1);
+		cout << endl;
 		finale();
-		cout << "Esc Key to save game\n";
+		cout << endl;
+		legal_moves(permanent1);
+		cout << endl;
+		setColor(14);
+		cout << "Use ARROW KEYS to move the empty tile (gray)." << endl;
+		setColor(12);
+		cout << "Press ESC to save game." << endl;
+		setColor(7);
+		print_hint();
 		make_move();
 
 		if (is_goal())
 		{
-			cout << "\tYou won the game congrats\n";
-			cout << "\t\tYou did the following moves\n";
+			setColor(10);
+			cout << "\n\tYou won the game, congrats!\n";
+			cout << "\t\tYou did the following moves:\n";
 			print_path();
+			setColor(7);
 			break;
 		}
-		Sleep(2000);
-		cout << endl << endl;
-		system("cls");
 	}
 }
 
@@ -236,55 +328,57 @@ bool is_solvable(int ar1[5][5], int ar2[5][5])
 }
 void init()
 {
-	cout << "----------------" << endl;
+	cout << "\n    ";
+	setColor(11); // Cyan border
+	cout << "+------+------+------+------+------+" << endl;
 	for (int i = 0; i < 5; i++)
 	{
+		cout << "    ";
 		for (int j = 0; j < 5; j++)
 		{
-			if (permanent1[i][j] < 10)
-			{
-				if (permanent1[i][j] != 0)
-					cout << "|" << " " << permanent1[i][j];
-				else
-					cout << "|  ";
-			}
-			else
-			{
-				cout << "|" << permanent1[i][j];
+			setColor(11); // Cyan border
+			cout << "|";
+			if (permanent1[i][j] == 0) {
+				setColor(8); // Gray for empty
+				cout << "    ";
+			} else {
+				setColor(14); // Yellow for numbers
+				cout << setw(4) << permanent1[i][j] << " ";
 			}
 		}
-		cout << "|";
-		cout << endl;
-		cout << "----------------" << endl;
-
+		setColor(11);
+		cout << "|" << endl;
+		cout << "    +------+------+------+------+------+" << endl;
 	}
+	setColor(7); // Reset
 }
 void finale()
 {
 	cout << endl;
 	cout << "FINAL BOARD IS :\n";
-	cout << "----------------" << endl;
+	cout << "    ";
+	setColor(13); // Magenta border
+	cout << "+------+------+------+------+------+" << endl;
 	for (int i = 0; i < 5; i++)
 	{
+		cout << "    ";
 		for (int j = 0; j < 5; j++)
 		{
-			if (permanent2[i][j] < 10)
-			{
-				if (permanent2[i][j] != 0)
-					cout << "|" << " " << permanent2[i][j];
-				else
-					cout << "|  ";
+			setColor(13); // Magenta border
+			cout << "|";
+			if (permanent2[i][j] == 0) {
+				setColor(8); // Gray for empty
+				cout << "    ";
+			} else {
+				setColor(10); // Green for numbers
+				cout << setw(4) << permanent2[i][j] << " ";
 			}
-			else
-				cout << "|" << permanent2[i][j];
-
 		}
-		cout << "|";
-		cout << endl;
-		cout << "----------------" << endl;
-
+		setColor(13);
+		cout << "|" << endl;
+		cout << "    +------+------+------+------+------+" << endl;
 	}
-
+	setColor(7); // Reset
 }
 void legal_moves(int array[5][5])
 {
@@ -324,104 +418,213 @@ void legal_moves(int array[5][5])
 void make_move()
 {
 	int r = 0, c = 0;
-
-	for (int i = 0; i < 5; i++)
-	{
-		for (int j = 0; j < 5; j++)
+	bool moved = false;
+	while (!moved) {
+		for (int i = 0; i < 5; i++)
 		{
-			if (permanent1[i][j] == 0)
+			for (int j = 0; j < 5; j++)
 			{
-
-				r = i;
-				c = j;
+				if (permanent1[i][j] == 0)
+				{
+					r = i;
+					c = j;
+				}
 			}
 		}
-	}
-	char decision;
-	unsigned char char_read = _getch();
-	if (char_read == ARROW_KEY_CHARACTER)
-	{
-		unsigned char arrow_read = _getch();
-		switch (arrow_read)
+		char decision;
+		unsigned char char_read = _getch();
+		if (char_read == ARROW_KEY_CHARACTER || char_read == 0)
 		{
-		case ARROW_KEY_UP:
-			if (r == 4 && (c == 0 || c == 1 || c == 2 || c == 3 || c == 4))
+			unsigned char arrow_read = _getch();
+			switch (arrow_read)
 			{
-				cout << "Error Illegal move\n";
+			case ARROW_KEY_UP:
+				if (r == 0)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r - 1][c]);
+					path += "U, ";
+					move_count++;
+					init();
+					cout << "Moved UP. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_DOWN:
+				if (r == 4)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r + 1][c]);
+					path += "D, ";
+					move_count++;
+					init();
+					cout << "Moved DOWN. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_LEFT:
+				if (c == 0)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r][c - 1]);
+					path += "L, ";
+					move_count++;
+					init();
+					cout << "Moved LEFT. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_RIGHT:
+				if (c == 4)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r][c + 1]);
+					path += "R, ";
+					move_count++;
+					init();
+					cout << "Moved RIGHT. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
 			}
-			else
-			{
-				swap(permanent1[r][c], permanent1[r + 1][c]);
-				path += "U, ";
-			}
-			break;
-		case ARROW_KEY_DOWN:
-			if (r == 0 && (c == 0 || c == 1 || c == 2 || c == 3 || c == 4))
-			{
-				cout << "Error Illegal move\n";
-			}
-			else
-			{
-				swap(permanent1[r][c], permanent1[r - 1][c]);
-				path += "D, ";
-			}
-			break;
-		case ARROW_KEY_LEFT:
-			if ((r == 0 || r == 1 || r == 2 || r == 3 || r == 4) && c == 4)
-			{
-				cout << "Error Illegal move\n";
-			}
-			else
-			{
-				swap(permanent1[r][c], permanent1[r][c + 1]);
-				path += "L, ";
-			}
-			break;
-		case ARROW_KEY_RIGHT:
-			if ((r == 0 || r == 1 || r == 2 || r == 3 || r == 4) && c == 0)
-			{
-				cout << "Error Illegal move\n";
-			}
-			else
-			{
-				swap(permanent1[r][c], permanent1[r][c - 1]);
-				path += "R, ";
-			}
-			break;
 		}
-
-	}
-	else
-	{
-		if (char_read == escape)
+		else if (char_read == ARROW_KEY_UP || char_read == ARROW_KEY_DOWN || char_read == ARROW_KEY_LEFT || char_read == ARROW_KEY_RIGHT)
 		{
-			save(permanent1, permanent2);
-			cout << endl;
-			cout << "Your game has been saved\n";
-			cout << "Do you want to continue? Y or N?\n";
-			decision = _getch();
-			if (decision == 'Y')
+			unsigned char arrow_read = char_read;
+			switch (arrow_read)
 			{
-				load(permanent1, permanent2);
+			case ARROW_KEY_UP:
+				if (r == 0)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r - 1][c]);
+					path += "U, ";
+					move_count++;
+					init();
+					cout << "Moved UP. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_DOWN:
+				if (r == 4)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r + 1][c]);
+					path += "D, ";
+					move_count++;
+					init();
+					cout << "Moved DOWN. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_LEFT:
+				if (c == 0)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r][c - 1]);
+					path += "L, ";
+					move_count++;
+					init();
+					cout << "Moved LEFT. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			case ARROW_KEY_RIGHT:
+				if (c == 4)
+				{
+					cout << "Error Illegal move\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+				else
+				{
+					swap(permanent1[r][c], permanent1[r][c + 1]);
+					path += "R, ";
+					move_count++;
+					init();
+					cout << "Moved RIGHT. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				break;
+			}
+		}
+		else
+		{
+			if (char_read == escape)
+			{
+				save(permanent1, permanent2);
+				cout << endl;
+				cout << "Your game has been saved\n";
+				cout << "Do you want to continue? Y or N?\n";
+				decision = _getch();
+				if (decision == 'Y' || decision == 'y')
+				{
+					load(permanent1, permanent2);
+					init();
+					cout << "Game loaded. Press any key to continue..."; _getch();
+					moved = true;
+				}
+				else if (decision == 'N' || decision == 'n')
+				{
+					exit(0);
+				}
+				else {
+					cout << "Invalid input. Continuing...\n";
+					init();
+					cout << "Press any key to continue..."; _getch();
+				}
+			}
+			else {
+				cout << "Invalid key. Use arrow keys or ESC.\n";
+				init();
+				cout << "Press any key to continue..."; _getch();
 			}
 		}
 	}
 }
 bool is_goal()
 {
-	bool is_goal_res = true;
 	for (int i = 0; i < 5; i++)
 	{
 		for (int j = 0; j < 5; j++)
 		{
-
-			if (permanent1[i][j] == permanent2[i][j])
-			{
-				is_goal_res = true;
-			}
-			else
-				is_goal_res = false;
-			return false;
+			if (permanent1[i][j] != permanent2[i][j])
+				return false;
 		}
 	}
 	return true;
